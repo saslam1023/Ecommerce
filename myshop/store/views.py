@@ -3,6 +3,8 @@ from .models import Product
 from django.contrib.sessions.models import Session
 import stripe
 from django.conf import settings
+from django.http import JsonResponse
+from django.contrib import messages
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -10,11 +12,50 @@ def product_list(request):
     products = Product.objects.all()
     return render(request, 'store/product_list.html', {'products': products})
 
+""" Original 
 def add_to_cart(request, product_id):
     cart = request.session.get('cart', {})
     cart[product_id] = cart.get(product_id, 0) + 1
     request.session['cart'] = cart
     return redirect('product_list')
+"""
+
+
+def add_to_cart(request, product_id):
+    # Retrieve the cart from the session or create an empty one if it doesn't exist
+    cart = request.session.get('cart', {})
+
+    # Ensure the product ID is a string
+    product_id = str(product_id)
+
+    # Increment the product quantity if it's already in the cart, otherwise set it to 1
+    if product_id in cart:
+        cart[product_id] += 1
+        messages.success(request, f"Updated quantity for product {product_id}.")
+    else:
+        cart[product_id] = 1
+        messages.success(request, f"Added product {product_id} to cart.")
+
+    # Save the updated cart back to the session
+    request.session['cart'] = cart
+    request.session.modified = True  # Force session save
+
+    # Retrieve messages
+    message_list = []
+    for message in messages.get_messages(request):
+        message_list.append({
+            'level': message.level_tag,
+            'message': message.message
+        })
+
+    # Return a JSON response with a success message and the updated cart count
+    return JsonResponse({
+        'success': True,
+        'cart_count': sum(cart.values()),  # Total items in cart
+        'messages': message_list  # Pass the messages in the response
+    })
+
+
 
 def cart(request):
     cart = request.session.get('cart', {})
