@@ -10,7 +10,14 @@
 
 </head>
 <body>
-    
+    <div class="cart-icon">
+        <span id="cart-count" class="relative -top-2 -right-3 bg-red-600 text-white text-xs font-bold rounded-full px-2 py-1">
+            {{ total_items }}  <!-- Initially load the cart count -->
+        </span>
+    </div>
+
+    <span id="cart-count" class="relative -top-2 -right-3 bg-red-600 text-white text-xs font-bold rounded-full px-2 py-1">{{ total_items }}</span>
+    <a href="{% url 'cart' %}">Cart</a>
 
     <h1>Products</h1>
 

@@ -10,7 +10,9 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 def product_list(request):
     products = Product.objects.all()
-    return render(request, 'store/product_list.html', {'products': products})
+    cart = request.session.get('cart', {})
+    cart_count = sum(cart.values())
+    return render(request, 'store/product_list.html', {'products': products, 'total_items': cart_count})
 
 """ Original 
 def add_to_cart(request, product_id):
@@ -48,13 +50,17 @@ def add_to_cart(request, product_id):
             'message': message.message
         })
 
-    # Return a JSON response with a success message and the updated cart count
-    return JsonResponse({
-        'success': True,
-        'cart_count': sum(cart.values()),  # Total items in cart
-        'messages': message_list  # Pass the messages in the response
-    })
-
+# Check if the request is an AJAX request
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        # Return a JSON response with a success message and the updated cart count
+        return JsonResponse({
+            'success': True,
+            'cart_count': sum(cart.values()),  # Total items in cart
+            'messages': list(messages.get_messages(request))  # Pass the messages in the response
+        })
+    else:
+        # Redirect back to the referring page or a specific URL
+        return redirect(request.META.get('HTTP_REFERER', 'product_list'))
 
 
 def cart(request):
