@@ -4,29 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Products</title>
+    {% load static %}
+
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+
 </head>
 <body>
     
 
     <h1>Products</h1>
 
+    
 
-    <div>
+    
+    <div class="product-container">
         {% for product in products %}
-            <div>
+        <div class="product-card">
                 {% if product.image %}
             <img src="{{ product.image.url }}" alt="{{ product.name }}">
         {% else %}
             <p>No image available.</p>
         {% endif %}
+            <div class="product-details">
                 <h2>{{ product.name }}</h2>
                 <p>{{ product.description }}</p>
-                <p>${{ product.price }}</p>
-                
+                <p>£{{ product.price }}</p>
+            </div>
+                <div>
                 <form action="{% url 'add_to_cart' product.id %}" method="post">
                     {% csrf_token %}
                     <button type="submit">Add to Cart</button>
                 </form>
+            </div>
             </div>
         {% endfor %}
         </div>

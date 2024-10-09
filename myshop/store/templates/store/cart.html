@@ -1,37 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cart</title>
+    {% load static %}
+
     <script src="https://js.stripe.com/v3/"></script>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+
 </head>
 <body>
 
       
 <h1>Your Cart</h1>
+
+<div class="product-container">
 {% for item in products %}
+<div class="product-card">
+        {% if item.product.image %}
+        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+        {% else %}
+        <p>No image available.</p>
+        {% endif %}
     <p>{{ item.product.name }} - ${{ item.product.price }} x {{ item.quantity }}</p>
+    </div>
 {% endfor %}
-<p>Total: ${{ total }}</p>
-<a href="{% url 'checkout' %}">Proceed to Checkout</a>
+
+<div>
+
+<p>Total: £{{ total }}</p>
 
 <form action="{% url 'checkout' %}" method="post">
     {% csrf_token %}
     <button type="submit">Pay with Stripe</button>
 </form>
 
-<hr>
-    <h1>Your Cart</h1>
-    <div>
-        {% for product in products %}
-            <div>
-                {{ product.name }} - ${{ product.price }}  <br>
-            </div>
-        {% endfor %}
-        </div>
-    <h2>Total: ${{ total }}</h2>
-    <a href="{% url 'checkout' %}">Checkout</a>
+
     <a href="{% url 'product_list' %}">Continue Shopping</a>
+    </div>
+</div>
 </body>
 </html>
