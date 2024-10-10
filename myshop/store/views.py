@@ -5,6 +5,8 @@ import stripe
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseRedirect
 from django.contrib import messages
+import json
+
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -80,6 +82,7 @@ def cart(request):
     cart = request.session.get('cart', {})
     products = []
     total = 0
+    cart_count = sum(cart.values())
 
     for product_id, quantity in cart.items():
         try:
@@ -96,6 +99,7 @@ def cart(request):
     return render(request, 'store/cart.html', {
         'products': products,
         'total': total,
+        'total_items': cart_count
     })
 
 
@@ -152,3 +156,37 @@ def remove_from_cart(request, product_id):
         # Redirect back to the page that triggered the request
         return HttpResponseRedirect(referer)
 
+
+ # Use this only if you are handling CSRF tokens properly elsewhere
+def update_cart_quantity(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            product_id = data.get('product_id')
+            action = data.get('action')
+
+            # Retrieve the cart from the session
+            cart = request.session.get('cart', {})
+            quantity = cart.get(product_id, 0)
+
+            if action == 'increase':
+                quantity += 1
+            elif action == 'decrease':
+                quantity = max(0, quantity - 1)  # Ensure it doesn't go below 0
+            else:
+                return JsonResponse({'success': False, 'error': 'Invalid action'})
+
+            # Update the cart in the session
+            if quantity > 0:
+                cart[product_id] = quantity
+            else:
+                cart.pop(product_id, None)  # Remove item if quantity is 0
+
+            request.session['cart'] = cart
+            request.session.modified = True  # Mark session as modified
+
+            # Return the updated quantity
+            return JsonResponse({'success': True, 'quantity': cart.get(product_id, 0)})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
