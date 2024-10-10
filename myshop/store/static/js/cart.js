@@ -40,13 +40,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Decrease product quantity
-    document.querySelectorAll('.btn-decrease').forEach(button => {
-        button.addEventListener('click', function() {
-            const productId = this.dataset.productId;
+// Decrease product quantity
+document.querySelectorAll('.btn-decrease').forEach(button => {
+    button.addEventListener('click', function() {
+        const productId = this.dataset.productId;
+        const quantityElement = document.getElementById('quantity-' + productId);
+        const currentQuantity = parseInt(quantityElement.textContent) || 0;
+
+        // Check if quantity is 1, meaning it would become 0 if decreased
+        if (currentQuantity === 1) {
+            // Trigger confirmation if decreasing to 0
+            const confirmRemove = confirm('Are you sure you want to remove this item from the cart?');
+            if (confirmRemove) {
+                removeFromCart(productId);  // If confirmed, remove the product
+            }
+        } else {
+            // Otherwise, decrease the quantity normally
             updateCartQuantity(productId, 'decrease');
-        });
+        }
     });
+});
 });
 
 // Function to update cart quantity
@@ -65,27 +78,67 @@ function updateCartQuantity(productId, action) {
     .then(response => response.json())
     .then(response => {
         if (response.success) {
-            // Update the quantity displayed in the UI
-            let quantity = document.getElementById('quantity-' + productId).textContent;
-            document.getElementById('quantity-' + productId).textContent = response.quantity;
-            let cartCount = document.getElementById('cart-count').textContent;
-            cartCount = parseInt(cartCount) || 0;
-        
-            // Adjust cartCount based on response.quantity
-            if (response.quantity < quantity) {
-                // Decrease cart count if response quantity is less
-                cartCountTotal = cartCount - 1;
-            } else if (response.quantity > quantity) {
-                // Increase cart count if response quantity is more
-                cartCountTotal = cartCount + 1;
-            } else {
-                // If the quantity is the same, keep it the same
-                cartCountTotal = cartCount;
-            }
+            // Get elements and values for total, price, and quantity
+            let totalElement = document.getElementById('total-' + productId);  
+            let price = parseFloat(document.getElementById('price-' + productId).textContent) || 0;
+            let quantityElement = document.getElementById('quantity-' + productId);
+            let currentQuantity = parseInt(quantityElement.textContent) || 0;
+            let totalPrice = document.getElementById('total-price');  
 
-            document.getElementById('cart-count').textContent = `${cartCountTotal}`;
-        }
+            
+            // Update the quantity in the UI
+            quantityElement.textContent = response.quantity;
+            
+            // Get the cart count and total price
+            let cartCount = parseInt(document.getElementById('cart-count').textContent) || 0;
+            let total = parseFloat(totalElement.textContent) || 0;
+            let cartTotal = parseFloat(totalPrice.textContent) || 0;
         
+
+            // Adjust cartCount and total price based on response.quantity
+            if (response.quantity < currentQuantity) {
+                // Decrease cart count and total if response quantity is less
+                cartCount -= 1;
+                total -= price;  // Decrease total
+                cartTotal = cartTotal - price;
+    
+
+            } else if (response.quantity > currentQuantity) {
+                // Increase cart count and total if response quantity is more
+                cartCount += 1;
+                total += price;  // Increase total
+                cartTotal = cartTotal + price;
+
+            }
+    
+            // Update the cart count in the UI
+            document.getElementById('cart-count').textContent = `${cartCount}`;
+            
+            // Update the total in the UI (with two decimal places)
+            totalElement.textContent = total.toFixed(2);  // Ensure total is displayed with two decimal places
+
+            // Update the cart total in the UI (with two decimal places)
+            totalPrice.textContent = cartTotal.toFixed(2);  // Ensure total is displayed with two decimal places
+
+        }
+    })
+    .catch(error => console.error('Fetch error:', error));
+}    
+
+
+// Function to remove product from cart
+function removeFromCart(productId) {
+    const url = `/cart/remove/${productId}/`;  // Adjust URL for remove endpoint
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')  // Use function to get CSRF token
+        }
+    })
+    .then(() => {
+        // Optionally, refresh the page or remove the item from the UI
+        location.reload();  // Reload the page after removal
     })
     .catch(error => console.error('Fetch error:', error));
 }
@@ -105,3 +158,42 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+// Removal modals
+document.addEventListener('DOMContentLoaded', function() {
+
+
+
+    // Handle Remove button click
+    document.querySelectorAll('.remove-btn').forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();  // Prevent form submission
+            const form = this.closest('form');  // Get the form to submit later
+            showModal(form);
+        });
+    });
+
+    // Show modal and handle confirmation
+    function showModal(form) {
+        const modal = document.getElementById('confirmModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('visible');  // Show the modal
+
+        // Handle the "Yes, Remove" button click
+        document.getElementById('confirmRemove').addEventListener('click', function() {
+            form.submit();  // Submit the form to remove the item
+            hideModal();
+        });
+
+        // Handle the "Cancel" button click
+        document.getElementById('cancelRemove').addEventListener('click', function() {
+            hideModal();  // Hide the modal if cancelled
+        });
+    }
+
+    function hideModal() {
+        const modal = document.getElementById('confirmModal');
+        modal.classList.remove('visible');
+        modal.classList.add('hidden');  // Hide the modal
+    }
+});

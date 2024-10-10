@@ -12,7 +12,7 @@
 <body>
     <div class="cart-icon">
         <span id="cart-count" class="relative -top-2 -right-3 bg-red-600 text-white text-xs font-bold rounded-full px-2 py-1">
-            {{ total_items }}  <!-- Initially load the cart count -->
+            {{ total_items }} 
         </span>
     </div>
 
@@ -44,11 +44,11 @@
                 <h2>{{ product.name }}</h2>
                 <p>{{ product.description }}</p>
                 <p>£{{ product.price }}</p>
-            </div>
-                <div>
+           
+                
                     <form class="add-to-cart-form" action="{% url 'add_to_cart' product.id %}" method="POST">
                         {% csrf_token %}
-                        <button type="submit" class="add-to-cart-btn">Add to Cart</button>
+                        <button type="submit" class="add-to-cart-btn button">Add to Cart</button>
                     </form>
                     <!-- Original 
                 <form action="{% url 'add_to_cart' product.id %}" method="post">

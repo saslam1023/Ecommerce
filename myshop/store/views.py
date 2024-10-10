@@ -90,7 +90,7 @@ def cart(request):
             products.append({
                 'product': product,
                 'quantity': quantity,
-                'total_price': product.price * quantity
+                'total': product.price * quantity # total price of each item
             })
             total += product.price * quantity
         except Product.DoesNotExist:
@@ -168,6 +168,7 @@ def update_cart_quantity(request):
             # Retrieve the cart from the session
             cart = request.session.get('cart', {})
             quantity = cart.get(product_id, 0)
+
 
             if action == 'increase':
                 quantity += 1

@@ -32,41 +32,62 @@
 {% endif %}
 <hr>
 <div class="product-container">
-
-    
 {% for item in products %}
+
 <div class="product-card">
-    <hr>
     {% if item.product.image %}
     <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
     {% else %}
     <p>No image available.</p>
     {% endif %}
-    <p>{{ item.product.name }} - £{{ item.product.price }} x <span id="quantity-{{ item.product.id }}" class="quantity">{{ item.quantity }}</span></p>
+    <div class="product-details">
+    <h2>{{ item.product.name }}</h2>
+    <p>£<span id="price-{{ item.product.id }}" class="price">{{ item.product.price }}</span></p>
+    
+    <p><button class="btn-decrease" data-product-id="{{ item.product.id }}">-</button>
+    <span id="quantity-{{ item.product.id }}" class="quantity">{{ item.quantity }}</span>
+    <button class="btn-increase" data-product-id="{{ item.product.id }}">+</button> @ £<span id="total-{{ item.product.id }}" class="total">{{ item.total }}</span></p>
 
-    <button class="btn-decrease" data-product-id="{{ item.product.id }}">-</button>
-    <button class="btn-increase" data-product-id="{{ item.product.id }}">+</button>
-
-    <form class="remove-cart-form" action="{% url 'remove_from_cart' item.product.id %}" method="POST">
-        {% csrf_token %}
-        <button type="submit" class="remove-btn">Remove</button>
-    </form>
-</div>
-
-{% endfor %}
 
 <div>
+    <form class="remove-cart-form" action="{% url 'remove_from_cart' item.product.id %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" class="remove-btn button">Remove</button>
+    </form>
+</div>
+</div>
+</div>
+{% endfor %}
 
-<p id="total-price">Total: £{{ total }}</p>
+<div class="product-card">
+    <div class="product-details">
+    <h2>Cart Totals</h2>
+
+<h3>£<span id="total-price" class="bold">{{ total }}</span></h3>
 
 <form action="{% url 'checkout' %}" method="post">
     {% csrf_token %}
-    <button type="submit">Pay with Stripe</button>
+    <button type="submit" class="button">Pay with Stripe</button>
 </form>
 
-
-    <a href="{% url 'product_list' %}">Continue Shopping</a>
+<p>
+    <a href="{% url 'product_list' %}" class="modalls">Continue Shopping</a></p>
     </div>
 </div>
+</div>
+<hr>
+<!-- Modal Structure -->
+<div id="confirmModal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Confirm Removal</h2>
+      <p>Are you sure you want to remove this item from your cart?</p>
+      <div class="modal-buttons">
+        <button id="confirmRemove">Yes, Remove</button>
+        <button id="cancelRemove">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  
 </body>
 </html>
