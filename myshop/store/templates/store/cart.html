@@ -63,7 +63,7 @@
 
 <div>
 
-<p id="total-price">Total: £{{ total }}</p>
+<p id="total-price">{{ total }}</p>
 
 <form action="{% url 'checkout' %}" method="post">
     {% csrf_token %}
