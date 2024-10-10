@@ -66,10 +66,26 @@ function updateCartQuantity(productId, action) {
     .then(response => {
         if (response.success) {
             // Update the quantity displayed in the UI
+            let quantity = document.getElementById('quantity-' + productId).textContent;
             document.getElementById('quantity-' + productId).textContent = response.quantity;
-        } else {
-            console.error('Error updating quantity:', response.error);
+            let cartCount = document.getElementById('cart-count').textContent;
+            cartCount = parseInt(cartCount) || 0;
+        
+            // Adjust cartCount based on response.quantity
+            if (response.quantity < quantity) {
+                // Decrease cart count if response quantity is less
+                cartCountTotal = cartCount - 1;
+            } else if (response.quantity > quantity) {
+                // Increase cart count if response quantity is more
+                cartCountTotal = cartCount + 1;
+            } else {
+                // If the quantity is the same, keep it the same
+                cartCountTotal = cartCount;
+            }
+
+            document.getElementById('cart-count').textContent = `${cartCountTotal}`;
         }
+        
     })
     .catch(error => console.error('Fetch error:', error));
 }
