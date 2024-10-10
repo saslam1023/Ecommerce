@@ -29,12 +29,20 @@
 <div class="product-container">
 {% for item in products %}
 <div class="product-card">
+
+    <hr>
         {% if item.product.image %}
         <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
         {% else %}
         <p>No image available.</p>
         {% endif %}
-    <p>{{ item.product.name }} - ${{ item.product.price }} x {{ item.quantity }}</p>
+    <p>{{ item.product.name }} - £{{ item.product.price }} x {{ item.quantity }}</p>
+
+
+    <form class="remove-cart-form" action="{% url 'remove_from_cart' item.product.id %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" class="remove-btn">Remove</button>
+    </form>
     </div>
 {% endfor %}
 

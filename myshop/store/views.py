@@ -3,7 +3,7 @@ from .models import Product
 from django.contrib.sessions.models import Session
 import stripe
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.contrib import messages
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -62,7 +62,7 @@ def add_to_cart(request, product_id):
         # Redirect back to the referring page or a specific URL
         return redirect(request.META.get('HTTP_REFERER', 'product_list'))
 
-
+""" Old
 def cart(request):
     cart = request.session.get('cart', {})
     products = []  # A list to hold product instances
@@ -74,6 +74,31 @@ def cart(request):
         total += product.price * quantity
 
     return render(request, 'store/cart.html', {'products': products, 'total': total})
+"""
+
+def cart(request):
+    cart = request.session.get('cart', {})
+    products = []
+    total = 0
+
+    for product_id, quantity in cart.items():
+        try:
+            product = Product.objects.get(id=product_id)
+            products.append({
+                'product': product,
+                'quantity': quantity,
+                'total_price': product.price * quantity
+            })
+            total += product.price * quantity
+        except Product.DoesNotExist:
+            pass
+
+    return render(request, 'store/cart.html', {
+        'products': products,
+        'total': total,
+    })
+
+
 
 def checkout(request):
     cart = request.session.get('cart', {})
@@ -87,7 +112,7 @@ def checkout(request):
             line_items=[
                 {
                     'price_data': {
-                        'currency': 'usd',
+                        'currency': 'gbp',
                         'product_data': {
                             'name': product.name,
                         },
@@ -110,3 +135,20 @@ def success(request):
 
 def cancel(request):
     return render(request, 'store/cancel.html')
+
+def remove_from_cart(request, product_id):
+    if request.method == "POST":
+        cart = request.session.get('cart', {})
+        
+        if product_id in cart:
+            del cart[product_id]  # Remove the item from the cart
+        
+        request.session['cart'] = cart
+        request.session.modified = True  # Mark session as modified
+
+        # Get the referring URL from the HTTP header
+        referer = request.META.get('HTTP_REFERER', '/')
+        
+        # Redirect back to the page that triggered the request
+        return HttpResponseRedirect(referer)
+
