@@ -40,13 +40,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Decrease product quantity
-    document.querySelectorAll('.btn-decrease').forEach(button => {
-        button.addEventListener('click', function() {
-            const productId = this.dataset.productId;
+// Decrease product quantity
+document.querySelectorAll('.btn-decrease').forEach(button => {
+    button.addEventListener('click', function() {
+        const productId = this.dataset.productId;
+        const quantityElement = document.getElementById('quantity-' + productId);
+        const currentQuantity = parseInt(quantityElement.textContent) || 0;
+
+        // Check if quantity is 1, meaning it would become 0 if decreased
+        if (currentQuantity === 1) {
+            // Trigger confirmation if decreasing to 0
+            const confirmRemove = confirm('Are you sure you want to remove this item from the cart?');
+            if (confirmRemove) {
+                removeFromCart(productId);  // If confirmed, remove the product
+            }
+        } else {
+            // Otherwise, decrease the quantity normally
             updateCartQuantity(productId, 'decrease');
-        });
+        }
     });
+});
 });
 
 // Function to update cart quantity
@@ -72,7 +85,6 @@ function updateCartQuantity(productId, action) {
             let currentQuantity = parseInt(quantityElement.textContent) || 0;
             let totalPrice = document.getElementById('total-price');  
 
-            console.log(`1. total price: ` + totalPrice)
             
             // Update the quantity in the UI
             quantityElement.textContent = response.quantity;
@@ -113,6 +125,24 @@ function updateCartQuantity(productId, action) {
     .catch(error => console.error('Fetch error:', error));
 }    
 
+
+// Function to remove product from cart
+function removeFromCart(productId) {
+    const url = `/cart/remove/${productId}/`;  // Adjust URL for remove endpoint
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')  // Use function to get CSRF token
+        }
+    })
+    .then(() => {
+        // Optionally, refresh the page or remove the item from the UI
+        location.reload();  // Reload the page after removal
+    })
+    .catch(error => console.error('Fetch error:', error));
+}
+
 // Function to get CSRF token from cookies
 function getCookie(name) {
     let cookieValue = null;
@@ -128,3 +158,42 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+// Removal modals
+document.addEventListener('DOMContentLoaded', function() {
+
+
+
+    // Handle Remove button click
+    document.querySelectorAll('.remove-btn').forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();  // Prevent form submission
+            const form = this.closest('form');  // Get the form to submit later
+            showModal(form);
+        });
+    });
+
+    // Show modal and handle confirmation
+    function showModal(form) {
+        const modal = document.getElementById('confirmModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('visible');  // Show the modal
+
+        // Handle the "Yes, Remove" button click
+        document.getElementById('confirmRemove').addEventListener('click', function() {
+            form.submit();  // Submit the form to remove the item
+            hideModal();
+        });
+
+        // Handle the "Cancel" button click
+        document.getElementById('cancelRemove').addEventListener('click', function() {
+            hideModal();  // Hide the modal if cancelled
+        });
+    }
+
+    function hideModal() {
+        const modal = document.getElementById('confirmModal');
+        modal.classList.remove('visible');
+        modal.classList.add('hidden');  // Hide the modal
+    }
+});
