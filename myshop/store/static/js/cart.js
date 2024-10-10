@@ -65,30 +65,43 @@ function updateCartQuantity(productId, action) {
     .then(response => response.json())
     .then(response => {
         if (response.success) {
-            // Update the quantity displayed in the UI
-            let quantity = document.getElementById('quantity-' + productId).textContent;
-            document.getElementById('quantity-' + productId).textContent = response.quantity;
-            let cartCount = document.getElementById('cart-count').textContent;
-            cartCount = parseInt(cartCount) || 0;
+            // Get elements and values for total, price, and quantity
+            let totalElement = document.getElementById('total-' + productId);  // Get the element, not the textContent
+            let price = parseFloat(document.getElementById('price-' + productId).textContent) || 0;
+            let quantityElement = document.getElementById('quantity-' + productId);
+            let currentQuantity = parseInt(quantityElement.textContent) || 0;
+            
+            // Update the quantity in the UI
+            quantityElement.textContent = response.quantity;
+            
+            // Get the cart count and total price
+            let cartCount = parseInt(document.getElementById('cart-count').textContent) || 0;
+            let total = parseFloat(totalElement.textContent) || 0;
         
-            // Adjust cartCount based on response.quantity
-            if (response.quantity < quantity) {
-                // Decrease cart count if response quantity is less
-                cartCountTotal = cartCount - 1;
-            } else if (response.quantity > quantity) {
-                // Increase cart count if response quantity is more
-                cartCountTotal = cartCount + 1;
-            } else {
-                // If the quantity is the same, keep it the same
-                cartCountTotal = cartCount;
+            console.log(`BEFORE CHANGE price: ${price}, total: ${total}, currentQuantity: ${currentQuantity}`);
+        
+            // Adjust cartCount and total price based on response.quantity
+            if (response.quantity < currentQuantity) {
+                // Decrease cart count and total if response quantity is less
+                cartCount -= 1;
+                total -= price;  // Decrease total
+                console.log(`Decreasing: price = ${price}, total = ${total}`);
+            } else if (response.quantity > currentQuantity) {
+                // Increase cart count and total if response quantity is more
+                cartCount += 1;
+                total += price;  // Increase total
+                console.log(`Increasing: price = ${price}, total = ${total}`);
             }
-
-            document.getElementById('cart-count').textContent = `${cartCountTotal}`;
+    
+            // Update the cart count in the UI
+            document.getElementById('cart-count').textContent = `${cartCount}`;
+            
+            // Update the total in the UI (with two decimal places)
+            totalElement.textContent = total.toFixed(2);  // Ensure total is displayed with two decimal places
         }
-        
     })
     .catch(error => console.error('Fetch error:', error));
-}
+}    
 
 // Function to get CSRF token from cookies
 function getCookie(name) {

@@ -42,10 +42,16 @@
     {% else %}
     <p>No image available.</p>
     {% endif %}
-    <p>{{ item.product.name }} - £{{ item.product.price }} x <span id="quantity-{{ item.product.id }}" class="quantity">{{ item.quantity }}</span></p>
+    <p>{{ item.product.name }} - £{{ item.product.price }} each</p>
+
+    <p> <span id="price-{{ item.product.id }}" class="price">{{ item.product.price }}</span></p>
 
     <button class="btn-decrease" data-product-id="{{ item.product.id }}">-</button>
+    <span id="quantity-{{ item.product.id }}" class="quantity">{{ item.quantity }}</span>
     <button class="btn-increase" data-product-id="{{ item.product.id }}">+</button>
+
+   <p> <span id="total-{{ item.product.id }}" class="total">{{ item.total }}</span></p>
+   
 
     <form class="remove-cart-form" action="{% url 'remove_from_cart' item.product.id %}" method="POST">
         {% csrf_token %}
