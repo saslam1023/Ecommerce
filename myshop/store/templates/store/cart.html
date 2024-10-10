@@ -10,14 +10,19 @@
     <script src="https://js.stripe.com/v3/"></script>
     <script src="{% static 'js/cart.js' %}" defer></script>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 </head>
 <body>
 
-      
-<h1>Your Cart</h1>
-<div id="message-container">Msg: </div>
 
+<h1>Your Cart</h1>
+
+<p>
+<span id="cart-count" class="relative -top-2 -right-3 bg-red-600 text-white text-xs font-bold rounded-full px-2 py-1">{{ total_items }}</span> items in cart</p>
+<hr>
+<div id="message-container">Msg: </div>
+<hr>
 {% if messages %}
 <div id="messages" class="alert-container">
     {% for message in messages %}
@@ -25,30 +30,34 @@
     {% endfor %}
 </div>
 {% endif %}
-
+<hr>
 <div class="product-container">
+
+    
 {% for item in products %}
 <div class="product-card">
-
     <hr>
-        {% if item.product.image %}
-        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
-        {% else %}
-        <p>No image available.</p>
-        {% endif %}
-    <p>{{ item.product.name }} - £{{ item.product.price }} x {{ item.quantity }}</p>
+    {% if item.product.image %}
+    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+    {% else %}
+    <p>No image available.</p>
+    {% endif %}
+    <p>{{ item.product.name }} - £{{ item.product.price }} x <span id="quantity-{{ item.product.id }}" class="quantity">{{ item.quantity }}</span></p>
 
+    <button class="btn-decrease" data-product-id="{{ item.product.id }}">-</button>
+    <button class="btn-increase" data-product-id="{{ item.product.id }}">+</button>
 
     <form class="remove-cart-form" action="{% url 'remove_from_cart' item.product.id %}" method="POST">
         {% csrf_token %}
         <button type="submit" class="remove-btn">Remove</button>
     </form>
-    </div>
+</div>
+
 {% endfor %}
 
 <div>
 
-<p>Total: £{{ total }}</p>
+<p id="total-price">Total: £{{ total }}</p>
 
 <form action="{% url 'checkout' %}" method="post">
     {% csrf_token %}
