@@ -18,6 +18,8 @@ load_dotenv()
 
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+BRAND = os.getenv('BRAND')
+DEFAULT_FROM_EMAIL = os.getenv('MAIL_DEFAULT_SENDER')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

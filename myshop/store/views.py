@@ -3,12 +3,19 @@ from .models import Product
 from django.contrib.sessions.models import Session
 import stripe
 from django.conf import settings
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponseBadRequest
 from django.contrib import messages
 import json
+from django.urls import reverse
+from django.core.mail import send_mail
+from django.views.decorators.csrf import csrf_exempt,csrf_protect
+
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+branding = settings.BRAND
+emailSender = settings.DEFAULT_FROM_EMAIL
+
 
 def product_list(request):
     products = Product.objects.all()
@@ -103,15 +110,14 @@ def cart(request):
     })
 
 
-
 def checkout(request):
-    cart = request.session.get('cart', {})
-    products = Product.objects.filter(id__in=cart.keys())
-    total = sum(product.price * quantity for product, quantity in zip(products, cart.values()))
-
+    """Create a Stripe checkout session."""
     if request.method == 'POST':
-        # Create a new Stripe Checkout session
-        checkout_session = stripe.checkout.Session.create(
+        cart = request.session.get('cart', {})
+        products = Product.objects.filter(id__in=cart.keys())
+        total = sum(product.price * quantity for product, quantity in zip(products, cart.values()))
+
+        session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[
                 {
@@ -120,19 +126,89 @@ def checkout(request):
                         'product_data': {
                             'name': product.name,
                         },
-                        'unit_amount': int(product.price * 100),  # Amount in cents
+                        'unit_amount': int(product.price * 100), 
                     },
                     'quantity': quantity,
                 } for product, quantity in zip(products, cart.values())
             ],
             mode='payment',
-            success_url=request.build_absolute_uri('/success/'),
+            billing_address_collection='required',
+            shipping_address_collection={
+                'allowed_countries': ['GB', 'US', 'CA']
+            },
+                        success_url=request.build_absolute_uri('/success/'),
             cancel_url=request.build_absolute_uri('/cart/'),
         )
-        return redirect(checkout_session.url, code=303)
+        return redirect(session.url, code=303)
 
     return render(request, 'store/checkout.html', {'products': products, 'cart': cart, 'total': total})
 
+
+
+def success(request):
+    """Handle successful payment and send confirmation email."""
+    session_id = request.GET.get('session_id')
+
+    try:
+        # Retrieve the session details
+        session = stripe.checkout.Session.retrieve(session_id)
+        line_items = stripe.checkout.Session.list_line_items(session_id, limit=10)
+
+        customer_email = session.get('customer_details', {}).get('email', 'N/A')
+        shipping_details = session.get('shipping')
+
+        # Extract shipping details
+        shipping_address = shipping_details.get('address', {}) if shipping_details else {}
+        address_line1 = shipping_address.get('line1', 'N/A')
+        city = shipping_address.get('city', 'N/A')
+        postal_code = shipping_address.get('postal_code', 'N/A')
+        country = shipping_address.get('country', 'N/A')
+        
+        total_amount = sum(item.price.unit_amount * item.quantity for item in line_items.data) / 100
+
+        #subject = f"Order Confirmation: {session.id}"
+        
+
+        subject = "Your Order Confirmation"
+        
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [customer_email])
+
+        order_summary = "\n".join([f"{item.description or 'Product'} - {item.price.unit_amount / 100} {item.price.currency.upper()} x {item.quantity}" 
+
+        for item in line_items.data])
+        
+        body = f"""
+        Hello,
+
+        Thank you for your purchase!
+
+        Order Summary:
+        {order_summary}
+
+        Total Amount Paid: £{total_amount}
+
+
+        Regards,
+        Your {BRAND}
+        """
+        
+
+
+    except Exception as e:
+        # Handle errors, log them
+        print(f"Error processing success for session {session_id}: {e}")
+        return HttpResponseBadRequest('Error processing success')
+
+    return render(request, 'success.html', {
+        'line_items': line_items, 
+        'total_amount': total_amount, 
+        'session': session,
+        'customer_email': customer_email, 
+        'address_line1': address_line1, 
+        'city': city,
+        'postal_code': postal_code,
+        'country': country
+    })
 
 def success(request):
     return render(request, 'store/success.html')
