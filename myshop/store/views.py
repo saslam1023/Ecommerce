@@ -9,13 +9,23 @@ import json
 from django.urls import reverse
 from django.core.mail import send_mail
 from django.views.decorators.csrf import csrf_exempt,csrf_protect
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+BRAND = os.getenv('BRAND')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
-stripe.public_key = settings.STRIPE_PUBLISHABLE_KEY
+stripe.public_key = settings.STRIPE_PUBLIC_KEY
 branding = settings.BRAND
 emailSender = settings.DEFAULT_FROM_EMAIL
+
 
 
 def product_list(request):
@@ -138,6 +148,7 @@ def checkout(request):
                 'allowed_countries': ['GB', 'US', 'CA']
             },
             success_url='http://127.0.0.1:8000/success?session_id={CHECKOUT_SESSION_ID}',
+            
             cancel_url='http://127.0.0.1:8000/cancel',
         )
         return redirect(session.url, code=303)
@@ -145,10 +156,122 @@ def checkout(request):
     return render(request, 'store/checkout.html', {'products': products, 'cart': cart, 'total': total})
 
 
-def success(request):
+def xxsuccess(request):
     """Handle successful payment and send confirmation email."""
     session_id = request.GET.get('session_id')
 
+    try:
+        stripe.Account.retrieve()
+        print("Successfully connected to Stripe!")
+        print(session_id)
+    except Exception as e:
+        print(f"Error connecting to Stripe: {e}")
+        print(session_id)
+
+    if not session_id:
+        return HttpResponseBadRequest('Session ID is required')
+
+    try:
+        # Retrieve the session details
+        session = stripe.checkout.Session.retrieve(session_id)
+        line_items = stripe.checkout.Session.list_line_items(session_id, limit=10)
+
+        customer_email = session.get('customer_details', {}).get('email', 'N/A')
+        shipping_details = session.get('shipping')
+
+        # Extract shipping details
+        shipping_address = shipping_details.get('address', {}) if shipping_details else {}
+        address_line1 = shipping_address.get('line1', 'N/A')
+        city = shipping_address.get('city', 'N/A')
+        postal_code = shipping_address.get('postal_code', 'N/A')
+        country = shipping_address.get('country', 'N/A')
+
+        total_amount = sum(item.price.unit_amount * item.quantity for item in line_items.data) / 100
+
+        # Construct order summary
+        order_summary = "\n".join([f"{item.description or 'Product'} - {item.price.unit_amount / 100} {item.price.currency.upper()} x {item.quantity}" 
+                                    for item in line_items.data])
+        
+        body = f"""
+        Hello,
+
+        Thank you for your purchase!
+
+        Order Summary:
+        {order_summary}
+
+        Total Amount Paid: £{total_amount}
+
+        Regards,
+        Your {branding}
+        """
+
+        subject = "Your Order Confirmation"
+
+        # Send confirmation email
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [customer_email])
+
+    except Exception as e:
+        print(f"Error processing success for session {session_id}: {e}")
+        return HttpResponseBadRequest('Error processing success')
+
+    return render(request, 'store/success.html', {
+        'line_items': line_items, 
+        'total_amount': total_amount, 
+        'session': session,
+        'customer_email': customer_email, 
+        'address_line1': address_line1, 
+        'city': city,
+        'postal_code': postal_code, 
+        'country': country
+    })
+
+
+""" This is a working success form 
+def success(request):
+    session_id = request.GET.get('session_id')
+
+    session = stripe.checkout.Session.retrieve(session_id)
+    line_items = stripe.checkout.Session.list_line_items(session_id, limit=10)
+
+    customer_email = session.get('customer_details', {}).get('email', 'N/A')
+    shipping_details = session.get('shipping')
+
+        # Extract shipping details
+    shipping_address = shipping_details.get('address', {}) if shipping_details else {}
+    address_line1 = shipping_address.get('line1', 'N/A')
+    city = shipping_address.get('city', 'N/A')
+    postal_code = shipping_address.get('postal_code', 'N/A')
+    country = shipping_address.get('country', 'N/A')
+
+    total_amount = sum(item.price.unit_amount * item.quantity for item in line_items.data) / 100
+
+        # Construct order summary
+    order_summary = "\n".join([f"{item.description or 'Product'} - {item.price.unit_amount / 100} {item.price.currency.upper()} x {item.quantity}" 
+                                    for item in line_items.data])
+
+    #return render(request, 'store/success.html', {'id': session_id})
+    return render(request, 'store/success.html', {
+        'line_items': line_items, 
+        'total_amount': total_amount, 
+        'session': session,
+        'customer_email': customer_email, 
+        'address_line1': address_line1, 
+        'city': city,
+        'postal_code': postal_code, 
+        'country': country
+    })
+"""
+
+
+from django.core.mail import send_mail
+from django.conf import settings
+from django.http import HttpResponseBadRequest
+
+def success(request):
+    session_id = request.GET.get('session_id')
+
+    # Check if the session ID is provided
     if not session_id:
         return HttpResponseBadRequest('Session ID is required')
 
@@ -157,25 +280,25 @@ def success(request):
         session = stripe.checkout.Session.retrieve(session_id)
         line_items = stripe.checkout.Session.list_line_items(session_id, limit=10)
 
-        # Extract customer and shipping details
+        # Extract customer email
         customer_email = session.get('customer_details', {}).get('email', 'N/A')
         shipping_details = session.get('shipping')
 
-        # Extract shipping address details
+        # Extract shipping details
         shipping_address = shipping_details.get('address', {}) if shipping_details else {}
         address_line1 = shipping_address.get('line1', 'N/A')
         city = shipping_address.get('city', 'N/A')
         postal_code = shipping_address.get('postal_code', 'N/A')
         country = shipping_address.get('country', 'N/A')
 
-        # Calculate total amount from line items
+        # Calculate total amount
         total_amount = sum(item.price.unit_amount * item.quantity for item in line_items.data) / 100
 
-        # Construct the order summary
-        order_summary = "\n".join([f"{item.description or 'Product'} - £{item.price.unit_amount / 100:.2f} {item.price.currency.upper()} x {item.quantity}" 
+        # Construct order summary
+        order_summary = "\n".join([f"{item.description or 'Product'} - {item.price.unit_amount / 100} {item.price.currency.upper()} x {item.quantity}" 
                                     for item in line_items.data])
 
-        # Construct email body
+        # Prepare the email body
         body = f"""
         Hello,
 
@@ -187,26 +310,22 @@ def success(request):
         Total Amount Paid: £{total_amount:.2f}
 
         Shipping Address:
-        {address_line1}
-        {city}, {postal_code}
-        {country}
+        {address_line1}, {city}, {postal_code}, {country}
 
         Regards,
-        Your Store Name
+        Your Brand Name
         """
 
         subject = "Your Order Confirmation"
 
         # Send confirmation email
-        if customer_email != 'N/A':
-            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [customer_email])
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [customer_email])
 
     except Exception as e:
-        # Log any errors for debugging purposes
         print(f"Error processing success for session {session_id}: {e}")
         return HttpResponseBadRequest('Error processing success')
 
-    # Render the success page with the relevant information
+    # Render the success page with relevant details
     return render(request, 'store/success.html', {
         'line_items': line_items, 
         'total_amount': total_amount, 
@@ -214,15 +333,10 @@ def success(request):
         'customer_email': customer_email, 
         'address_line1': address_line1, 
         'city': city,
-        'postal_code': postal_code,
+        'postal_code': postal_code, 
         'country': country
     })
 
-
-
-
-def xsuccess(request):
-    return render(request, 'store/success.html')
 
 def cancel(request):
     return render(request, 'store/cancel.html')
