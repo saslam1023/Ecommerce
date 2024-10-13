@@ -1,0 +1,6 @@
+.env
+
+__pycache__/
+*.pycstore/static/js/checkout.js
+store/templates/store/stripe-cart.html
+store/templates/store/stripecart.html
