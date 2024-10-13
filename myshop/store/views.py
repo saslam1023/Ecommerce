@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt,csrf_protect
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+stripe.public_key = settings.STRIPE_PUBLISHABLE_KEY
 branding = settings.BRAND
 emailSender = settings.DEFAULT_FROM_EMAIL
 
@@ -136,47 +137,45 @@ def checkout(request):
             shipping_address_collection={
                 'allowed_countries': ['GB', 'US', 'CA']
             },
-                        success_url=request.build_absolute_uri('/success/'),
-            cancel_url=request.build_absolute_uri('/cart/'),
+            success_url='http://127.0.0.1:8000/success?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url='http://127.0.0.1:8000/cancel',
         )
         return redirect(session.url, code=303)
 
     return render(request, 'store/checkout.html', {'products': products, 'cart': cart, 'total': total})
 
 
-
 def success(request):
     """Handle successful payment and send confirmation email."""
     session_id = request.GET.get('session_id')
 
+    if not session_id:
+        return HttpResponseBadRequest('Session ID is required')
+
     try:
-        # Retrieve the session details
+        # Retrieve the session details from Stripe
         session = stripe.checkout.Session.retrieve(session_id)
         line_items = stripe.checkout.Session.list_line_items(session_id, limit=10)
 
+        # Extract customer and shipping details
         customer_email = session.get('customer_details', {}).get('email', 'N/A')
         shipping_details = session.get('shipping')
 
-        # Extract shipping details
+        # Extract shipping address details
         shipping_address = shipping_details.get('address', {}) if shipping_details else {}
         address_line1 = shipping_address.get('line1', 'N/A')
         city = shipping_address.get('city', 'N/A')
         postal_code = shipping_address.get('postal_code', 'N/A')
         country = shipping_address.get('country', 'N/A')
-        
+
+        # Calculate total amount from line items
         total_amount = sum(item.price.unit_amount * item.quantity for item in line_items.data) / 100
 
-        #subject = f"Order Confirmation: {session.id}"
-        
+        # Construct the order summary
+        order_summary = "\n".join([f"{item.description or 'Product'} - £{item.price.unit_amount / 100:.2f} {item.price.currency.upper()} x {item.quantity}" 
+                                    for item in line_items.data])
 
-        subject = "Your Order Confirmation"
-        
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [customer_email])
-
-        order_summary = "\n".join([f"{item.description or 'Product'} - {item.price.unit_amount / 100} {item.price.currency.upper()} x {item.quantity}" 
-
-        for item in line_items.data])
-        
+        # Construct email body
         body = f"""
         Hello,
 
@@ -185,21 +184,30 @@ def success(request):
         Order Summary:
         {order_summary}
 
-        Total Amount Paid: £{total_amount}
+        Total Amount Paid: £{total_amount:.2f}
 
+        Shipping Address:
+        {address_line1}
+        {city}, {postal_code}
+        {country}
 
         Regards,
-        Your {BRAND}
+        Your Store Name
         """
-        
 
+        subject = "Your Order Confirmation"
+
+        # Send confirmation email
+        if customer_email != 'N/A':
+            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [customer_email])
 
     except Exception as e:
-        # Handle errors, log them
+        # Log any errors for debugging purposes
         print(f"Error processing success for session {session_id}: {e}")
         return HttpResponseBadRequest('Error processing success')
 
-    return render(request, 'success.html', {
+    # Render the success page with the relevant information
+    return render(request, 'store/success.html', {
         'line_items': line_items, 
         'total_amount': total_amount, 
         'session': session,
@@ -210,7 +218,10 @@ def success(request):
         'country': country
     })
 
-def success(request):
+
+
+
+def xsuccess(request):
     return render(request, 'store/success.html')
 
 def cancel(request):
